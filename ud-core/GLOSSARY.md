@@ -22,6 +22,14 @@ _Avoid_: Group, category, type
 Two or more components of one **Family** that play the same role for the person using the interface, whether or not their code is alike. Each carries a confidence level.
 _Avoid_: Clone, copy, redundancy
 
+**Frame**:
+The part of a component that stays the same whatever it holds: its outline, its surface, its spacing, how it opens and closes. Several components of a **Family** can draw the same Frame.
+_Avoid_: Shell, base, wrapper, container
+
+**Target**:
+What a **Family** would become: its **Frames**, their variants, their pieces, and where each of today's members goes. A proposal until the owner settles it.
+_Avoid_: Ideal, end state, refactor
+
 **Expected states**:
 The states a component of a given kind should show, such as rest, focus, disabled and loading. Each project can change the list.
 _Avoid_: Variants, required states
@@ -69,12 +77,16 @@ A **Finding** where two sources disagree, such as the app and Storybook. No sour
 _Avoid_: Drift, mismatch, gap
 
 **Decision**:
-The owner's answer to a **Finding** that offers a choice. It is open, settled or applied.
+The owner's answer to a **Finding** that offers a choice. It is open, deferred (waiting on someone else's answer), settled or applied.
 _Avoid_: Arbitration, verdict, resolution
 
 **Decision ledger**:
 The lasting record of every **Decision** in a project, so that a later **Run** does not ask again.
 _Avoid_: Decision log, register, history
+
+**Brief**:
+The one page that ranks what every audit of a **Run** found, for the owner to read first. It can be limited to one **Zone**, **Family**, component or folder.
+_Avoid_: Summary, dashboard, digest
 
 **Lot**:
 A set of settled **Decisions** that can be reworked, checked and understood on its own.

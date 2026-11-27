@@ -8,7 +8,7 @@
 // the judging agents) and reports/components.md
 import fs from "node:fs";
 import path from "node:path";
-import { loadSettings, resolveRun, readJson, writeJson, writeText, finding, writeFindings, mdTable, splitClass } from "./lib.mjs";
+import { loadSettings, resolveRun, readJson, writeJson, writeText, finding, writeFindings, mdTable, splitClass, loadTokenValues, sameLook } from "./lib.mjs";
 
 const root = process.cwd();
 const defaults = readJson(new URL("../defaults.json", import.meta.url));
@@ -69,13 +69,18 @@ function wordsOf(name) {
 // ---- Components -------------------------------------------------------------
 
 const IGNORED_PROPS = new Set(["children", "className"]);
+
+// Two classes that draw the same thing count as the same class (see sameLook in lib.mjs).
+// Without this, a component that uses the token and its twin that hard-codes the
+// value look less alike than they are, which is the commonest kind of Duplicate.
+const tokenValues = loadTokenValues(run.dir);
 const classSets = new Map();
 function classSetOf(file) {
   if (!classSets.has(file)) {
     const set = new Set();
     for (const token of Object.keys(classFacts.byFile[file] ?? {})) {
       const { utility } = splitClass(token);
-      if (utility) set.add(utility);
+      if (utility) set.add(sameLook(utility, tokenValues));
     }
     classSets.set(file, set);
   }

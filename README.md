@@ -8,14 +8,15 @@ It is built to be carried from one project to the next. Nothing of a project liv
 
 - **The owner settles.** When the app and Storybook disagree, the suite describes both sides and asks. It never declares a winner ([why](./ud-core/docs/adr/0001-no-default-source-of-truth.md)).
 - **Scripts count, agents judge.** Numbers come from scripts, so two runs can be compared. Sub-agents are used only where files must be read to judge.
-- **Audit and rework are separate.** Thirteen skills only read. One, `ud-rework`, changes code, one lot at a time, on request.
+- **One page first.** A pass ends on a brief that ranks what was found, by component and by **Reach**; the per-skill reports are the detail behind it.
+- **Audit and rework are separate.** Fourteen skills only read. One, `ud-rework`, changes code, one lot at a time, on request.
 - **Every report states its limits.**
 
 ## The skills
 
 | Skill | What it does | Changes code |
 |---|---|---|
-| [`ud`](./ud/) | Orchestrator: status, full pass, changed-only pass | No |
+| [`ud`](./ud/) | Orchestrator: status, full pass, one part in focus, changed-only pass, resume | No |
 | [`ud-init`](./ud-init/) | Detects the stack and writes the project settings | No |
 | [`ud-scan`](./ud-scan/) | Reads the project and writes the graph and raw facts | No |
 | [`ud-tokens`](./ud-tokens/) | Tokens, hard-coded values, scale proposals | No |
@@ -23,6 +24,7 @@ It is built to be carried from one project to the next. Nothing of a project liv
 | [`ud-stories`](./ud-stories/) | Storybook compared with the app | No |
 | [`ud-states`](./ud-states/) | UI states compared within a family | No |
 | [`ud-patterns`](./ud-patterns/) | Look-alike pieces of interface that are not components | No |
+| [`ud-consolidate`](./ud-consolidate/) | What a large family really needs: frames, variants, pieces, and what is only content | No |
 | [`ud-map`](./ud-map/) | Interactive HTML map and Mermaid map | No |
 | [`ud-decide`](./ud-decide/) | Arbitration and the decision ledger | No |
 | [`ud-plan`](./ud-plan/) | The rework plan, in lots | No |
@@ -36,11 +38,21 @@ It is built to be carried from one project to the next. Nothing of a project liv
 
 ```
 /ud-init                      once per project
-/ud full                      scan, the five audits, the map, then arbitration
-/ud-decide                    settle findings, a subject at a time
+/ud full                      scan and count (no question), choose how much is judged, get the brief and the map
+/ud-consolidate Modal         "11 modals: 1 frame, a size variant, 2 pieces; 8 are only content"
+/ud-decide Button             settle findings, a component or family at a time; "ask design" is an answer
 /ud-plan                      cut the settled decisions into lots
 /ud-rework lot-01             apply a lot, when you choose to
 /ud changed                   later: what moved since the last run
+/ud                           any time: where things stand and the one next step
+```
+
+Day to day, most of the use is smaller than a full pass:
+
+```
+/ud focus Button              everything the audits see about one family, component, zone or folder
+/ud focus marketing
+/ud resume                    finish a pass that was interrupted
 ```
 
 `/ud-render` and `/ud-blueprint` are run on demand. Each skill can also be run alone.
@@ -50,13 +62,13 @@ It is built to be carried from one project to the next. Nothing of a project liv
 ```
 .ud/
 ├── settings.json        zones, read-only folders, working rules, reference system
-├── decisions.json       every decision, kept across runs
+├── decisions.json       every decision, kept across runs: settled, applied, or waiting on someone
 ├── plan/                the lots
 └── runs/<date>/
     ├── graph.json       components, screens, stories, tokens and their links
     ├── facts/           raw facts from the scan
     ├── findings/        what each skill found
-    ├── reports/         one markdown report per skill
+    ├── reports/         brief.md, the page to read first, then one report per skill
     └── map.html         the interactive map
 ```
 

@@ -12,7 +12,7 @@ The contract between the scripts and the skills. Words in **bold** are defined i
 │   ├── lots.json            Lots (written by ud-plan)
 │   └── plan.md
 └── runs/<run id>/           One Run, id = YYYY-MM-DD-HHmmss
-    ├── run.json             { id, scannerVersion, startedAt, commit, branch, dirty, counts }
+    ├── run.json             { id, scannerVersion, startedAt, commit, branch, dirty, dirtyFiles[], dirtyHashes{}, counts }
     ├── graph.json           { run, counts, nodes[], edges[] }
     ├── facts/               Raw facts from ud-scan (never edited by hand)
     │   ├── classes.json     { byFile: { file: { classToken: count } }, arbitrary: [{ file, line, token }] }
@@ -23,6 +23,7 @@ The contract between the scripts and the skills. Words in **bold** are defined i
     ├── findings/<skill>.json   { generatedBy, generatedAt, summary, findings[] }
     ├── work/                Briefs and intermediate data for judging agents
     ├── reports/<skill>.md   Reports for the owner, in the settings' report language
+    ├── reports/brief.md     The one page to read first (brief.mjs); brief-<focus>.md for one part
     └── map.html             The interactive map (self-contained, works offline)
 ```
 
@@ -50,13 +51,17 @@ The contract between the scripts and the skills. Words in **bold** are defined i
 
 `screens.kind` is `next-app` (with `dir`), `globs` (with `include`) or `none`. The last four keys are optional and override `ud-core/defaults.json` key by key. The first **Zone** whose `include` matches a file wins; a file matching none is `unzoned`.
 
+## run.json
+
+`dirtyFiles` lists the files that were uncommitted when the scan ran (untracked ones included), and `dirtyHashes` a short hash of each. With them, `diff-runs.mjs`, `carry.mjs` and `status.mjs` can tell what changed between two runs, or since the last one, even when nothing was committed in between: the usual case while an interface is being worked on.
+
 ## graph.json
 
 Node: `{ id, kind, name, file, line?, zone, readOnly, data }`.
 
 | kind | id | data |
 |---|---|---|
-| `component` | `c:<file>#<Name>` | `exportName`, `loc`, `props[{ name, optional, type, values[]\|null }]`, `extends[]`, `variants{ cvaName: { variant: [values] } }`, `uses{ callSites, files[], storyCallSites, spreads, props{ prop: { count, dynamic, values{ value: count } } } }`, `screens` (number of routes that reach its file), `screenSample[]`, `stories[]` (story node ids naming it in `component:`), `shownIn[]?` (story node ids rendering it) |
+| `component` | `c:<file>#<Name>` | `exportName`, `loc`, `props[{ name, optional, type, values[]\|null }]`, `extends[]`, `variants{ cvaName: { variant: [values] } }`, `uses{ callSites, files[], storyCallSites, spreads, props{ prop: { count, dynamic, values{ value: count } } } }`, `screens` (number of routes that render it, directly or through other components), `fileScreens` (routes that reach its file), `screenSample[]`, `stories[]` (story node ids naming it in `component:`), `shownIn[]?` (story node ids rendering it) |
 | `screen` | `s:<file>` | `route`, `screenKind` (`page`, `layout`, …), `files` |
 | `story` | `y:<file>` | `title`, `componentName`, `component` (component id or null), `metaArgs`, `tags[]`, `stories[{ name, line, args, tags[], hasPlay, hasRender }]` |
 | `token` | `t:<--name>` | `category`, `theme` (declared in `@theme`), `value`, `scopes[]`, `uses`, `files[]` |
@@ -66,7 +71,7 @@ Edge: `{ from, to, kind, count? }`, where kind is `renders` (from a component, s
 
 Known limits of the scan, to repeat in reports where they matter:
 - Syntax only. Props that come from an imported type are listed under `extends`, not expanded.
-- `screens` is counted per file through imports: every component in a reached file counts as reached.
+- `screens` is counted per component, by following who renders it up to a screen. A component only reached through a value (a map of components, a lazy import) shows 0 screens; `fileScreens` keeps the looser per-file count (every component of a file a screen imports).
 - A prop passed through a spread or built at run time is counted (`spreads`, `dynamic`), not resolved.
 - A class string built at run time (`bg-${tone}`) is not seen.
 
@@ -95,6 +100,7 @@ Made with `finding()` from `lib.mjs`. The `id` is stable across **Runs** (kind +
 
 - `reach` is the **Reach**; `effort` is the **Effort** (`XS`, `S`, `M`, `L`).
 - Scripts fill what can be counted. A judging agent may then set `effort`, `confidence`, `recommendation`, `judgement` and `source: "agent"`, and nothing else.
+- `carriedFrom` (a run id) is set by `carry.mjs` when those fields were copied from an earlier **Run** because none of the **Finding**'s files changed. The counts are always the new run's.
 - Every finding that offers a choice has at least two `options`, and one of them is always `keep` ("leave as it is"). A finding with no `options` is information only.
 
 ### Finding kinds
@@ -106,6 +112,7 @@ Made with `finding()` from `lib.mjs`. The `id` is stable across **Runs** (kind +
 | ud-stories | `story-missing`, `story-orphan`, `story-outdated-arg`, `story-value-unused`, `story-value-missing`, `prop-value-unshown` |
 | ud-states | `state-missing`, `state-inconsistent` |
 | ud-patterns | `pattern` |
+| ud-consolidate | `family-consolidation` (subject `family:<name>`, one per **Family**; its target is `work/targets/<Family>.json`) |
 | ud-render | `render-mismatch`, `render-confirmed-duplicate` |
 | ud-blueprint | `blueprint-story-tree`, `blueprint-token-levels`, `blueprint-naming`, `blueprint-props`, `blueprint-folders` |
 
@@ -127,7 +134,9 @@ Made with `finding()` from `lib.mjs`. The `id` is stable across **Runs** (kind +
 }
 ```
 
-`status` is `open`, `settled` or `applied`. A finding with no entry is open. A `keep` choice is settled and never asked again unless its subject changes.
+`status` is `open`, `deferred`, `settled` or `applied`. A finding with no entry is open. A `keep` choice is settled and never asked again unless its subject changes.
+
+A `deferred` entry has no `choice`; its `note` says who or what is awaited ("Marie, design: is the pink tone still wanted?"). It is not asked again in the ordinary rounds, never goes into a **Lot**, and is listed in `reports/decisions.md` under "Waiting on someone" so the list can be sent as it is.
 
 ## plan/lots.json
 

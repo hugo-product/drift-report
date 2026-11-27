@@ -262,3 +262,158 @@ export function countBy(items, keyOf) {
   }
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])));
 }
+
+// ---- What changed between two runs -------------------------------------------
+
+// Files changed in the working tree at the time of a call (tracked and untracked).
+export function dirtyFilesNow(root = projectRoot()) {
+  return git(["status", "--porcelain", "--untracked-files=all"], root)
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => line.replace(/^\s*[A-Z?!]{1,2}\s+/, "").split(" -> ").pop().replace(/^"|"$/g, ""))
+    .filter((file) => !file.startsWith(`${UD_DIR}/`))
+    .sort();
+}
+
+// The uncommitted files with a hash of what each holds, so that two runs made on the
+// same uncommitted work are not told apart. A deleted file has the hash null.
+export function dirtyState(root = projectRoot()) {
+  const dirtyFiles = dirtyFilesNow(root);
+  const dirtyHashes = {};
+  for (const file of dirtyFiles) {
+    try {
+      dirtyHashes[file] = crypto.createHash("sha1").update(fs.readFileSync(path.join(root, file))).digest("hex").slice(0, 12);
+    } catch {
+      dirtyHashes[file] = null;
+    }
+  }
+  return { dirty: dirtyFiles.length > 0, dirtyFiles, dirtyHashes };
+}
+
+// Files that differ between two runs: the commits' diff plus what was uncommitted
+// when each run was made. `known` is false when that cannot be worked out.
+export function changedBetween(beforeMeta = {}, nowMeta = {}, root = projectRoot()) {
+  const a = beforeMeta.commit || "";
+  const b = nowMeta.commit || "";
+  if (!a || !b) return { known: false, files: [], note: "At least one of the two runs has no commit recorded (the project was not a Git repository then), so the changed files are not known." };
+  let files = [];
+  let note;
+  if (a === b) note = "Both runs were made on the same commit.";
+  else if (!git(["cat-file", "-t", a], root) || !git(["cat-file", "-t", b], root)) {
+    return { known: false, files: [], note: "One of the two commits is no longer in this repository, so the changed files are not known." };
+  } else {
+    files = git(["diff", "--name-only", a, b], root).split("\n").filter(Boolean);
+    note = `${files.length} file${files.length === 1 ? "" : "s"} changed between ${a.slice(0, 7)} and ${b.slice(0, 7)}.`;
+  }
+  const unlisted = [beforeMeta, nowMeta].filter((meta) => meta.dirty && !Array.isArray(meta.dirtyFiles));
+  if (unlisted.length) {
+    return { known: false, files: [...new Set(files)].sort(), note: `${note} At least one run was made with uncommitted changes that were not listed (a run made before the scan recorded them), so the full list is not known.` };
+  }
+  const hashOf = (meta, file) => ((meta.dirtyFiles ?? []).includes(file) ? meta.dirtyHashes?.[file] ?? "?" : "clean");
+  const uncommitted = [...new Set([...(beforeMeta.dirtyFiles ?? []), ...(nowMeta.dirtyFiles ?? [])])]
+    .filter((file) => a !== b || hashOf(beforeMeta, file) === "?" || hashOf(beforeMeta, file) !== hashOf(nowMeta, file));
+  if (uncommitted.length) note += ` ${uncommitted.length} more file${uncommitted.length === 1 ? " was" : "s were"} uncommitted and differed between the two.`;
+  return { known: true, files: [...new Set([...files, ...uncommitted])].sort(), note };
+}
+
+// ---- Findings, their files and their components -------------------------------
+
+const FILE_LIKE = /^[^:#]+\.(tsx?|jsx?|mjs|cjs|css|scss|mdx?|json|svg)$/i;
+
+// The files a Finding is about: its subject's files, then its evidence.
+export function filesOfFinding(finding, nodesById = new Map()) {
+  const files = new Set();
+  const add = (file) => {
+    if (typeof file === "string" && FILE_LIKE.test(file)) files.add(file);
+  };
+  for (const subject of finding.subject ?? []) {
+    const text = String(subject);
+    const node = nodesById.get(text);
+    if (node?.file) add(node.file);
+    else if (/^[cysm]:/.test(text)) add(text.slice(2).split("#")[0]);
+    else if (text.startsWith("file:")) add(text.slice(5));
+    else add(text);
+  }
+  for (const item of finding.evidence ?? []) add(item?.file);
+  for (const item of Array.isArray(finding.data?.files) ? finding.data.files : []) add(typeof item === "string" ? item : item?.file);
+  return [...files].sort();
+}
+
+// The component nodes a Finding is about (a story stands for the component it names).
+export function componentsOfFinding(finding, nodesById) {
+  const out = [];
+  for (const subject of finding.subject ?? []) {
+    const node = nodesById.get(String(subject));
+    if (node?.kind === "component") out.push(node);
+    else if (node?.kind === "story" && node.data?.component && nodesById.get(node.data.component)) out.push(nodesById.get(node.data.component));
+  }
+  return [...new Set(out)];
+}
+
+// Component id -> Family name: from the components report when it ran, else from the family words.
+export function familyIndex(runDir, graph, settings) {
+  const index = new Map();
+  const families = readJson(path.join(runDir, "work", "families.json"), { families: [] }).families ?? [];
+  for (const family of families) for (const member of family.members ?? []) index.set(member.id, family.name);
+  if (index.size) return index;
+  const defaults = readJson(new URL("../defaults.json", import.meta.url), {});
+  const words = new Set(settings.familyWords ?? defaults.familyWords ?? []);
+  for (const node of graph.nodes ?? []) {
+    if (node.kind !== "component") continue;
+    const parts = String(node.name ?? "").match(/[A-Z]+(?![a-z])|[A-Z][a-z0-9]*/g) ?? [];
+    for (let i = parts.length - 1; i >= 0; i -= 1) {
+      if (words.has(parts[i])) {
+        index.set(node.id, parts[i]);
+        break;
+      }
+    }
+  }
+  return index;
+}
+
+// Does a Finding belong to a focus? The focus is one word or path from the owner:
+// a Zone, a Family, a component name, or part of a file path. Case does not matter.
+export function inFocus(finding, focus, { nodesById, families }) {
+  const want = String(focus ?? "").trim().toLowerCase();
+  if (!want) return true;
+  if (String(finding.zone ?? "").toLowerCase() === want) return true;
+  for (const node of componentsOfFinding(finding, nodesById)) {
+    if (String(node.name).toLowerCase() === want) return true;
+    if (String(families.get(node.id) ?? "").toLowerCase() === want) return true;
+  }
+  if (String(finding.data?.family ?? "").toLowerCase() === want) return true;
+  if (want.length < 3) return false;
+  return filesOfFinding(finding, nodesById).some((file) => file.toLowerCase().includes(want));
+}
+
+export const offersChoice = (finding) => (finding.options ?? []).length >= 2;
+export const isJudged = (finding) => finding.source === "agent" || Boolean(finding.recommendation);
+
+// ---- Classes that draw the same thing ------------------------------------------
+
+// Token name -> its value, written the same way whatever the spelling.
+export function loadTokenValues(runDir) {
+  const values = new Map();
+  for (const token of readJson(path.join(runDir, "facts", "tokens.json"), { tokens: [] }).tokens ?? []) {
+    const value = token.declarations?.[0]?.value;
+    if (typeof value === "string") values.set(token.name, value.trim().toLowerCase().replace(/\s+/g, ""));
+  }
+  return values;
+}
+
+// `bg-[#dbeafe]` and `bg-brand-soft` (when --color-brand-soft is #dbeafe) both become
+// `bg=#dbeafe`; `text-[11px]` and `text-tiny` both become `text=11px`.
+const TOKEN_SPACES = { text: ["color", "text", "font-size"], rounded: ["radius"], shadow: ["shadow"], font: ["font", "font-weight"] };
+export function sameLook(utility, tokenValues = new Map()) {
+  const arbitrary = /^(.+?)-\[(.+)\]$/.exec(utility);
+  if (arbitrary) return `${arbitrary[1]}=${arbitrary[2].toLowerCase().replace(/[\s_]+/g, "")}`;
+  const dash = utility.indexOf("-");
+  if (dash < 1) return utility;
+  const prefix = utility.slice(0, dash);
+  const rest = utility.slice(dash + 1);
+  for (const space of TOKEN_SPACES[prefix] ?? ["color", "spacing"]) {
+    const value = tokenValues.get(`--${space}-${rest}`);
+    if (value) return `${prefix}=${value}`;
+  }
+  return utility;
+}

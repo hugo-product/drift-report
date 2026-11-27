@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   UD_DIR, projectRoot, loadSettings, resolveRun, listRuns, runsDir, readJson, writeText,
-  loadFindings, mdTable, countBy, git, argValue,
+  loadFindings, mdTable, countBy, argValue, changedBetween,
 } from "./lib.mjs";
 
 const root = projectRoot();
@@ -27,6 +27,7 @@ const SKILL_OF_KIND = (kind) => {
   if (/^(duplicate-candidate|same-name|component-unused|variant-candidate)/.test(kind)) return "components";
   if (/^(story-|prop-value-unshown)/.test(kind)) return "stories";
   if (/^state-/.test(kind)) return "states";
+  if (/^family-consolidation/.test(kind)) return "consolidate";
   if (/^pattern/.test(kind)) return "patterns";
   if (/^render-/.test(kind)) return "render";
   if (/^blueprint-/.test(kind)) return "blueprint";
@@ -100,24 +101,12 @@ const perKind = (nodes) => Object.fromEntries(countBy(nodes, (node) => node.kind
 
 const commitA = before.meta.commit || "";
 const commitB = now.meta.commit || "";
-let changedFiles = [];
-let filesKnown = false;
-let changedFilesNote;
-if (!commitA || !commitB) {
-  changedFilesNote = "At least one of the two runs has no commit recorded (the project was not a Git repository then), so the changed files are not known.";
-} else if (commitA === commitB) {
-  filesKnown = true;
-  changedFilesNote = "Both runs were made on the same commit, so no committed file changed between them.";
-} else if (!git(["cat-file", "-t", commitA], root) || !git(["cat-file", "-t", commitB], root)) {
-  changedFilesNote = "One of the two commits is no longer in this repository, so the changed files are not known.";
-} else {
-  filesKnown = true;
-  changedFiles = git(["diff", "--name-only", commitA, commitB], root).split("\n").filter(Boolean).sort();
-  changedFilesNote = `${changedFiles.length} file${changedFiles.length === 1 ? "" : "s"} changed between ${commitA.slice(0, 7)} and ${commitB.slice(0, 7)}.`;
-}
-const dirtyNote = before.meta.dirty || now.meta.dirty
-  ? "At least one run was made with uncommitted changes; those are not in the list."
-  : null;
+// Uncommitted files count too: each run lists the ones it saw (run.json, dirtyFiles).
+const changed = changedBetween(before.meta, now.meta, root);
+const changedFiles = changed.files;
+const filesKnown = changed.known;
+const changedFilesNote = changed.note;
+const dirtyNote = null;
 
 // ---- Decisions to look at again --------------------------------------------
 
