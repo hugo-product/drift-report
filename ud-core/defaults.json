@@ -1,0 +1,32 @@
+{
+  "familyWords": [
+    "Button", "Modal", "Dialog", "Sheet", "Drawer", "Popover", "Tooltip", "Menu", "Dropdown", "Select",
+    "Card", "Badge", "Pill", "Chip", "Tag", "Tabs", "Tab", "Banner", "Alert", "Toast",
+    "Avatar", "Skeleton", "Spinner", "Loader", "Input", "Field", "Checkbox", "Radio", "Switch", "Toggle",
+    "Slider", "Progress", "Accordion", "Table", "List", "Nav", "Header", "Footer", "Sidebar", "Icon", "Form"
+  ],
+  "expectedStates": {
+    "interactive": ["rest", "hover", "focus", "pressed", "disabled", "loading"],
+    "input": ["rest", "focus", "filled", "disabled", "error"],
+    "data": ["empty", "loading", "error", "long-text"],
+    "overlay": ["open", "closed", "loading", "error"]
+  },
+  "stateKinds": {
+    "interactive": ["Button", "Tab", "Tabs", "Pill", "Chip", "Toggle", "Switch", "Checkbox", "Radio", "Menu", "Dropdown", "Select", "Slider"],
+    "input": ["Input", "Field", "Form"],
+    "data": ["Card", "List", "Table", "Avatar"],
+    "overlay": ["Modal", "Dialog", "Sheet", "Drawer", "Popover"]
+  },
+  "thresholds": {
+    "recurringValue": 5,
+    "duplicateScore": 0.45,
+    "patternSimilarity": 0.8,
+    "patternMinMembers": 3,
+    "patternMinClasses": 5,
+    "lotMaxFiles": 25,
+    "autoFamilyMembers": 4,
+    "breakpointOneOff": 5,
+    "scaleCoverage": 0.8,
+    "scaleMinShare": 0.05
+  }
+}
