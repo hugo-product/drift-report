@@ -26,6 +26,8 @@ Read `~/.claude/skills/ud-core/CONVENTIONS.md` first, then follow it. Needs a **
    - recommends `merge`, `variant` or `keep`, with **Effort** and confidence.
    Same role with different looks is still a duplicate; identical code serving two different roles is not.
 
+   The score only decides what is read first, never what is read at all. A **Family** of six members or fewer is read whole by its agent even when no pair reaches the score: two components with unlike names, unlike props and the same job (a `Badge` taking `tone`, a `StatusBadge` taking `status`) are exactly what a score misses. For each pair the agent confirms, add a `duplicate-candidate` finding as in step 4.
+
 4. **Look beyond the script.** The script only pairs components inside one family. Ask one agent to read the family table and name cross-family overlaps worth a look (a `Pill` and a `Badge`, a `Sheet` and a `Drawer`, a `Dialog` and a `Modal`). For each overlap it confirms by reading the files, add a `duplicate-candidate` finding with `source: "agent"`, using `finding()`'s shape and a subject made of the component ids.
 
 5. **Unused components.** For the `component-unused` findings, check the ones with the largest files: is the component reached in a way the scan cannot see (lazy import by string, a registry, a route convention)? Lower the confidence and say why, rather than deleting the finding.

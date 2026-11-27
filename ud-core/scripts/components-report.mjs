@@ -69,13 +69,37 @@ function wordsOf(name) {
 // ---- Components -------------------------------------------------------------
 
 const IGNORED_PROPS = new Set(["children", "className"]);
+
+// Two classes that draw the same thing count as the same class: `bg-[#dbeafe]` and
+// `bg-brand-soft` when --color-brand-soft is #dbeafe, `text-[11px]` and `text-tiny`.
+// Without this, a component that uses the token and its twin that hard-codes the
+// value look less alike than they are, which is the commonest kind of Duplicate.
+const tokenValues = new Map();
+for (const token of readJson(path.join(run.dir, "facts", "tokens.json"), { tokens: [] }).tokens ?? []) {
+  const value = token.declarations?.[0]?.value;
+  if (typeof value === "string") tokenValues.set(token.name, value.trim().toLowerCase().replace(/\s+/g, ""));
+}
+const TOKEN_SPACES = { text: ["color", "text", "font-size"], rounded: ["radius"], shadow: ["shadow"], font: ["font", "font-weight"] };
+function sameLook(utility) {
+  const arbitrary = /^(.+?)-\[(.+)\]$/.exec(utility);
+  if (arbitrary) return `${arbitrary[1]}=${arbitrary[2].toLowerCase().replace(/[\s_]+/g, "")}`;
+  const dash = utility.indexOf("-");
+  if (dash < 1) return utility;
+  const prefix = utility.slice(0, dash);
+  const rest = utility.slice(dash + 1);
+  for (const space of TOKEN_SPACES[prefix] ?? ["color", "spacing"]) {
+    const value = tokenValues.get(`--${space}-${rest}`);
+    if (value) return `${prefix}=${value}`;
+  }
+  return utility;
+}
 const classSets = new Map();
 function classSetOf(file) {
   if (!classSets.has(file)) {
     const set = new Set();
     for (const token of Object.keys(classFacts.byFile[file] ?? {})) {
       const { utility } = splitClass(token);
-      if (utility) set.add(utility);
+      if (utility) set.add(sameLook(utility));
     }
     classSets.set(file, set);
   }

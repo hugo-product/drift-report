@@ -676,10 +676,37 @@ for (const screen of screens) {
     data: { route: screen.route, screenKind: screen.kind, files: screen.files ?? null },
   });
 }
+// Reach is counted per component: the screens of whatever renders it, followed up
+// the render edges to a screen file or a module a screen imports. The per-file count
+// (every component of a reached file counts as reached) is kept as `fileScreens`.
+const renderedBy = new Map(); // component id -> [ids that render it]
+for (const edge of renderEdges.values()) {
+  if (!renderedBy.has(edge.to)) renderedBy.set(edge.to, []);
+  renderedBy.get(edge.to).push(edge.from);
+}
+const routesMemo = new Map();
+function routesOf(id, trail = new Set()) {
+  if (routesMemo.has(id)) return routesMemo.get(id);
+  if (trail.has(id)) return new Set();
+  trail.add(id);
+  const routes = new Set();
+  if (id.startsWith("c:")) {
+    for (const from of renderedBy.get(id) ?? []) for (const route of routesOf(from, trail)) routes.add(route);
+    // A component declared in a routing file is drawn by the router, not by a tag.
+    const file = id.slice(2).split("#")[0];
+    if (screenFiles.has(file)) for (const route of reachByFile.get(file) ?? []) routes.add(route);
+  } else if (id.startsWith("s:") || id.startsWith("m:")) {
+    for (const route of reachByFile.get(id.slice(2)) ?? []) routes.add(route);
+  }
+  trail.delete(id);
+  if (!trail.size) routesMemo.set(id, routes);
+  return routes;
+}
 for (const node of componentNodes.values()) {
-  const routes = reachByFile.get(node.file);
-  node.data.screens = routes ? routes.size : 0;
-  node.data.screenSample = routes ? [...routes].sort().slice(0, 8) : [];
+  const routes = routesOf(node.id);
+  node.data.screens = routes.size;
+  node.data.screenSample = [...routes].sort().slice(0, 8);
+  node.data.fileScreens = reachByFile.get(node.file)?.size ?? 0;
 }
 
 // Stories.

@@ -61,7 +61,7 @@ Node: `{ id, kind, name, file, line?, zone, readOnly, data }`.
 
 | kind | id | data |
 |---|---|---|
-| `component` | `c:<file>#<Name>` | `exportName`, `loc`, `props[{ name, optional, type, values[]\|null }]`, `extends[]`, `variants{ cvaName: { variant: [values] } }`, `uses{ callSites, files[], storyCallSites, spreads, props{ prop: { count, dynamic, values{ value: count } } } }`, `screens` (number of routes that reach its file), `screenSample[]`, `stories[]` (story node ids naming it in `component:`), `shownIn[]?` (story node ids rendering it) |
+| `component` | `c:<file>#<Name>` | `exportName`, `loc`, `props[{ name, optional, type, values[]\|null }]`, `extends[]`, `variants{ cvaName: { variant: [values] } }`, `uses{ callSites, files[], storyCallSites, spreads, props{ prop: { count, dynamic, values{ value: count } } } }`, `screens` (number of routes that render it, directly or through other components), `fileScreens` (routes that reach its file), `screenSample[]`, `stories[]` (story node ids naming it in `component:`), `shownIn[]?` (story node ids rendering it) |
 | `screen` | `s:<file>` | `route`, `screenKind` (`page`, `layout`, …), `files` |
 | `story` | `y:<file>` | `title`, `componentName`, `component` (component id or null), `metaArgs`, `tags[]`, `stories[{ name, line, args, tags[], hasPlay, hasRender }]` |
 | `token` | `t:<--name>` | `category`, `theme` (declared in `@theme`), `value`, `scopes[]`, `uses`, `files[]` |
@@ -71,7 +71,7 @@ Edge: `{ from, to, kind, count? }`, where kind is `renders` (from a component, s
 
 Known limits of the scan, to repeat in reports where they matter:
 - Syntax only. Props that come from an imported type are listed under `extends`, not expanded.
-- `screens` is counted per file through imports: every component in a reached file counts as reached.
+- `screens` is counted per component, by following who renders it up to a screen. A component only reached through a value (a map of components, a lazy import) shows 0 screens; `fileScreens` keeps the looser per-file count (every component of a file a screen imports).
 - A prop passed through a spread or built at run time is counted (`spreads`, `dynamic`), not resolved.
 - A class string built at run time (`bg-${tone}`) is not seen.
 
