@@ -112,6 +112,7 @@ Made with `finding()` from `lib.mjs`. The `id` is stable across **Runs** (kind +
 | ud-stories | `story-missing`, `story-orphan`, `story-outdated-arg`, `story-value-unused`, `story-value-missing`, `prop-value-unshown` |
 | ud-states | `state-missing`, `state-inconsistent` |
 | ud-patterns | `pattern` |
+| ud-consolidate | `family-consolidation` (subject `family:<name>`, one per **Family**; its target is `work/targets/<Family>.json`) |
 | ud-render | `render-mismatch`, `render-confirmed-duplicate` |
 | ud-blueprint | `blueprint-story-tree`, `blueprint-token-levels`, `blueprint-naming`, `blueprint-props`, `blueprint-folders` |
 

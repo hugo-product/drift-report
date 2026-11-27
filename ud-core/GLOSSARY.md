@@ -22,6 +22,14 @@ _Avoid_: Group, category, type
 Two or more components of one **Family** that play the same role for the person using the interface, whether or not their code is alike. Each carries a confidence level.
 _Avoid_: Clone, copy, redundancy
 
+**Frame**:
+The part of a component that stays the same whatever it holds: its outline, its surface, its spacing, how it opens and closes. Several components of a **Family** can draw the same Frame.
+_Avoid_: Shell, base, wrapper, container
+
+**Target**:
+What a **Family** would become: its **Frames**, their variants, their pieces, and where each of today's members goes. A proposal until the owner settles it.
+_Avoid_: Ideal, end state, refactor
+
 **Expected states**:
 The states a component of a given kind should show, such as rest, focus, disabled and loading. Each project can change the list.
 _Avoid_: Variants, required states

@@ -35,7 +35,7 @@ const tokenFile = new Map(tokenFacts.map((token) => [`t:${token.name}`, token.de
 const GROUPS = ["tokens", "components", "patterns", "states", "stories", "render", "blueprint", "other"];
 function groupOf(kind) {
   if (/^(token-|raw-color|recurring-value|scale-|font-alias|breakpoint-oneoff|inline-style)/.test(kind)) return "tokens";
-  if (/^(duplicate-candidate|same-name|component-unused|variant-candidate|render-confirmed-duplicate)/.test(kind)) return "components";
+  if (/^(duplicate-candidate|same-name|component-unused|variant-candidate|render-confirmed-duplicate|family-consolidation)/.test(kind)) return "components";
   if (/^pattern/.test(kind)) return "patterns";
   if (/^state-/.test(kind)) return "states";
   if (/^(story-|prop-value-unshown)/.test(kind)) return "stories";
@@ -44,7 +44,7 @@ function groupOf(kind) {
   return "other";
 }
 // Each Finding of these kinds is a cluster of its own: one Lot per Finding.
-const OWN_LOT = /^(duplicate-candidate|same-name|render-confirmed-duplicate|pattern|blueprint-)/;
+const OWN_LOT = /^(duplicate-candidate|same-name|render-confirmed-duplicate|family-consolidation|pattern|blueprint-)/;
 const KIND_LABEL = {
   "token-unused": "Unused tokens",
   "token-undeclared": "Undeclared tokens",

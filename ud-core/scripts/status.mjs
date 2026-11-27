@@ -12,7 +12,7 @@ import {
 
 const root = projectRoot();
 const print = (data) => process.stdout.write(`${JSON.stringify(data, null, 1)}\n`);
-const AUDITS = ["tokens", "components", "stories", "states", "patterns"];
+const AUDITS = ["tokens", "components", "stories", "states", "patterns", "consolidate"];
 
 const settingsFile = path.join(root, UD_DIR, "settings.json");
 if (!fs.existsSync(settingsFile)) {

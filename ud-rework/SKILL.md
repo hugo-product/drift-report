@@ -11,7 +11,7 @@ Read `~/.claude/skills/ud-core/CONVENTIONS.md` first, then follow it. Needs `.ud
 ## Before touching a file
 
 1. **A lot id is required.** With none, show the planned lots in order and ask which one. Never pick one yourself, never chain to the next lot without being asked.
-2. **Read the lot**, its **Decisions** in `.ud/decisions.json` (including each `note`: the owner's conditions are part of the decision) and their findings.
+2. **Read the lot**, its **Decisions** (and, for a `family-consolidation`, the target in the run's `work/targets/<Family>.json`: it says where every member goes and what must be kept) in `.ud/decisions.json` (including each `note`: the owner's conditions are part of the decision) and their findings.
 3. **Check the lot is still true.** If the latest **Run**'s commit is behind the code, rescan (`node ~/.claude/skills/ud-core/scripts/scan.mjs`) and compare the lot's files with what is there now. If a file is gone, a component has changed shape, or a decision's finding has disappeared, stop and tell the owner what changed.
 4. **Check its dependencies.** A lot whose `dependsOn` lots are not `done` is not started; say which are missing.
 5. **Follow the project's working rules** (`workingRules` in the settings, and the project's own instruction files, which win over anything here): where the work goes (branch), how large one change may be, what to check, when to commit, when the owner reviews. If the lot is larger than the project allows, propose a split and wait.

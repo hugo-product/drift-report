@@ -11,7 +11,7 @@ Read `~/.claude/skills/ud-core/CONVENTIONS.md` first, then follow it. `UD_CORE` 
 The owner is a person with a design question, not an operator of fourteen skills. Three things follow, in every mode:
 
 - **One page, not seven.** The owner is handed `reports/brief.md` and the map. The per-skill reports are where the brief sends them for detail, not what they are asked to read.
-- **Never ask before the numbers exist.** The scan and the five counts are read-only, take seconds and use no sub-agent: run them without asking. The one question of a pass comes after, with real counts.
+- **Never ask before the numbers exist.** The scan and the six counts are read-only, take seconds and use no sub-agent: run them without asking. The one question of a pass comes after, with real counts.
 - **The owner can stop anywhere.** Every step leaves the **Run** usable and `/ud` says how to pick it up.
 
 ## What to do, by argument
@@ -36,7 +36,7 @@ The complete pass. With a **Zone**, steps 3 to 6 are limited to it.
 
 1. **Check where things stand** with `status.mjs`. If the latest **Run** is on the current code (`sinceRun.interfaceFilesChanged` is 0) and some of it is done, say so and continue it (see `resume`) instead of scanning again: a new scan starts a new **Run** and its judging would be paid for twice.
 
-2. **Count, without asking.** `ud-scan` (its sanity check included), then the five report scripts (`tokens-report`, `components-report`, `stories-report`, `states-report`, `patterns-report`), then, when an earlier **Run** exists, `carry.mjs`, then:
+2. **Count, without asking.** `ud-scan` (its sanity check included), then the six report scripts (`tokens-report`, `components-report`, `stories-report`, `states-report`, `patterns-report`, then `consolidate-report`, which needs the Families of `components-report`), then, when an earlier **Run** exists, `carry.mjs`, then:
 
    ```bash
    node UD_CORE/scripts/brief.mjs [--focus <zone>]
@@ -46,6 +46,7 @@ The complete pass. With a **Zone**, steps 3 to 6 are limited to it.
    - the size of the project and how many **Findings** wait for an answer;
    - the keyboard-focus gaps, when there are any, before anything else;
    - the five components where the open questions gather (`hotSpots`);
+   - the **Families** worth consolidating, as `consolidate-report` printed them ("Modal: 11 components, 3 distinct Frames drawn"): for most projects this is where the largest simplification is;
    - the judging plan: `judging.groups` groups are unread. One sub-agent reads one group.
 
    Then offer, recommended first, and wait for the answer:
@@ -62,7 +63,7 @@ The complete pass. With a **Zone**, steps 3 to 6 are limited to it.
 
 6. **Hand over**, then stop:
    - `reports/brief.md` and `map.html`, as the two things to open;
-   - the three to five facts that matter most, each with its number: start with keyboard focus, then the most reused component with the most open **Findings**, then the scales;
+   - the three to five facts that matter most, each with its number: start with keyboard focus, then the largest **Family** consolidation with its proposed target, then the most reused component with the most open **Findings**, then the scales;
    - what was not read by an agent, in one line;
    - an offer of the first round, concrete and small: "Settle the Button family now? 7 Findings, about five minutes" (`/ud-decide <family>`). The pass does not walk into arbitration on its own: the owner may want to read the brief, look at the map or show it to a designer first.
    - when **Duplicate** candidates or **Patterns** sit between 0.4 and 0.7 confidence: offer `/ud-render` on them before they are settled, because a look at the screen is what changes those answers.
@@ -73,7 +74,7 @@ The complete pass. With a **Zone**, steps 3 to 6 are limited to it.
 
 The everyday mode: one part of the interface, end to end, in one conversation. "What is going on with our buttons", "audit the pricing page", "is the Card family consistent".
 
-1. `status.mjs`. No **Run**, or interface files changed since: run step 2 of `full` first (scan, five scripts, carry). Otherwise use the latest **Run** as it is.
+1. `status.mjs`. No **Run**, or interface files changed since: run step 2 of `full` first (scan, six scripts, carry). Otherwise use the latest **Run** as it is.
 2. `node UD_CORE/scripts/brief.mjs --focus "<the word>"`. It writes `reports/brief-<word>.md`. If it finds nothing, list the **Families** and **Zones** that exist and ask which one was meant; do not guess.
 3. Judge the focus's groups from `judging.ranked`. At 5 groups or fewer, no question (Cost guard); above, say the number and propose the first 5.
 4. Rebuild the focus brief, then tell the owner what the audits see for this part, as a short story rather than five lists: which components it has and how reused they are, where they repeat each other, what the stories show and do not show, which states are missing, which hard-coded values and tokens they carry.
@@ -83,7 +84,7 @@ The everyday mode: one part of the interface, end to end, in one conversation. "
 
 What moved since the last **Run**. If there is no earlier **Run**, say so and offer `full`.
 
-1. `ud-scan` (always whole: it is fast and keeps the graph complete), then the five report scripts.
+1. `ud-scan` (always whole: it is fast and keeps the graph complete), then the six report scripts.
 2. Bring the earlier answers forward. Never copy judging fields by hand:
 
    ```bash

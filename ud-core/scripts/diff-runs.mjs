@@ -27,6 +27,7 @@ const SKILL_OF_KIND = (kind) => {
   if (/^(duplicate-candidate|same-name|component-unused|variant-candidate)/.test(kind)) return "components";
   if (/^(story-|prop-value-unshown)/.test(kind)) return "stories";
   if (/^state-/.test(kind)) return "states";
+  if (/^family-consolidation/.test(kind)) return "consolidate";
   if (/^pattern/.test(kind)) return "patterns";
   if (/^render-/.test(kind)) return "render";
   if (/^blueprint-/.test(kind)) return "blueprint";

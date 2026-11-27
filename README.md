@@ -9,7 +9,7 @@ It is built to be carried from one project to the next. Nothing of a project liv
 - **The owner settles.** When the app and Storybook disagree, the suite describes both sides and asks. It never declares a winner ([why](./ud-core/docs/adr/0001-no-default-source-of-truth.md)).
 - **Scripts count, agents judge.** Numbers come from scripts, so two runs can be compared. Sub-agents are used only where files must be read to judge.
 - **One page first.** A pass ends on a brief that ranks what was found, by component and by **Reach**; the per-skill reports are the detail behind it.
-- **Audit and rework are separate.** Thirteen skills only read. One, `ud-rework`, changes code, one lot at a time, on request.
+- **Audit and rework are separate.** Fourteen skills only read. One, `ud-rework`, changes code, one lot at a time, on request.
 - **Every report states its limits.**
 
 ## The skills
@@ -24,6 +24,7 @@ It is built to be carried from one project to the next. Nothing of a project liv
 | [`ud-stories`](./ud-stories/) | Storybook compared with the app | No |
 | [`ud-states`](./ud-states/) | UI states compared within a family | No |
 | [`ud-patterns`](./ud-patterns/) | Look-alike pieces of interface that are not components | No |
+| [`ud-consolidate`](./ud-consolidate/) | What a large family really needs: frames, variants, pieces, and what is only content | No |
 | [`ud-map`](./ud-map/) | Interactive HTML map and Mermaid map | No |
 | [`ud-decide`](./ud-decide/) | Arbitration and the decision ledger | No |
 | [`ud-plan`](./ud-plan/) | The rework plan, in lots | No |
@@ -38,6 +39,7 @@ It is built to be carried from one project to the next. Nothing of a project liv
 ```
 /ud-init                      once per project
 /ud full                      scan and count (no question), choose how much is judged, get the brief and the map
+/ud-consolidate Modal         "11 modals: 1 frame, a size variant, 2 pieces; 8 are only content"
 /ud-decide Button             settle findings, a component or family at a time; "ask design" is an answer
 /ud-plan                      cut the settled decisions into lots
 /ud-rework lot-01             apply a lot, when you choose to

@@ -23,6 +23,7 @@ Not a skill: the shared folder every `ud-*` skill relies on.
 | `stories-report.mjs` | ud-stories | Missing, orphan and outdated stories, value gaps |
 | `states-report.mjs` | ud-states | State evidence per component, gaps within a family |
 | `patterns-report.mjs` | ud-patterns | Clusters of look-alike elements |
+| `consolidate-report.mjs` | ud-consolidate | Per large family: frames, content-only members, look-alike groups, axes, recurring pieces |
 | `map.mjs` | ud-map | The HTML map and the Mermaid map |
 | `status.mjs` | ud | Where the project stands and the one next step; reads only |
 | `brief.mjs` | ud | The one page over every audit, whole or for one focus, and the judging plan |

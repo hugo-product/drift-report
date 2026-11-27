@@ -104,6 +104,8 @@ function groupOf(finding) {
     case "stories":
     case "states":
       return family ? `${family} family` : component ?? "components without a Family";
+    case "consolidate":
+      return `${finding.data?.family} family, as a whole`;
     case "patterns":
       return finding.title;
     default:
@@ -196,6 +198,9 @@ const across = [];
 for (const finding of scales) across.push(`- ${finding.title}.${offersChoice(finding) ? "" : " No suggestion: information only."}`);
 if (rawColours.length) across.push(`- ${count(rawColours.length, "hard-coded colour")} with no settled answer; the most used: ${rawColours.slice(0, 5).map((finding) => `${finding.data?.value ?? finding.title} (${count(usesOf(finding), "use")})`).join(", ")}.`);
 if (unusedTokens.length) across.push(`- ${count(unusedTokens.length, "token")} declared and used nowhere the scan can see.`);
+for (const finding of all.filter((item) => item.kind === "family-consolidation").sort(byReach).slice(0, 8)) {
+  across.push(`- ${finding.title}: ${finding.data?.summary}.${finding.judgement ? ` Proposed: ${finding.judgement}` : ""}`);
+}
 if (duplicates.length) across.push(`- ${count(duplicates.length, "possible **Duplicate**")}: ${duplicates.slice(0, 5).map((finding) => finding.title).join("; ")}.`);
 if (patterns.length) across.push(`- ${count(patterns.length, "recurring **Pattern**")} with no component behind ${patterns.length === 1 ? "it" : "them"}; the widest: ${patterns.slice(0, 3).map((finding) => finding.title).join("; ")}.`);
 lines.push(...(across.length ? across : ["Nothing to report across the system in this scope."]), "");

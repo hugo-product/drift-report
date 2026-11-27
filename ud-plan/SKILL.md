@@ -28,6 +28,8 @@ Read `~/.claude/skills/ud-core/CONVENTIONS.md` first, then follow it. Needs sett
    - split a lot that is over the project's size limit along a line where each half is still useful alone; never split into "components", then "wiring", then "tests".
    Keep the ids and the status of lots that already exist.
 
+   A settled `family-consolidation` is never one lot. Read its target (`work/targets/<Family>.json` in the run) and cut it so that the interface works after each lot: first the **Frames**, variants and pieces with their stories, touching no call site; then the members moved onto them, one look-alike group per lot, each with the call sites it changes; last the removal of what nothing uses any more. A member listed as `unread` in the target is read before it is put in a lot.
+
 4. **What is left out, and why.** List decisions that could not be planned: a subject in a `readOnly` folder (`readOnlyBlocked`), a decision whose finding is gone, a choice whose note needs a design answer first.
 
 5. **Rewrite `plan.md`** from the refined `lots.json`: a summary (number of lots, total estimated size, what the system gains), the ordered table, then one section per lot.

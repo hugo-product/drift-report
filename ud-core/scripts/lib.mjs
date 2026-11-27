@@ -388,3 +388,32 @@ export function inFocus(finding, focus, { nodesById, families }) {
 
 export const offersChoice = (finding) => (finding.options ?? []).length >= 2;
 export const isJudged = (finding) => finding.source === "agent" || Boolean(finding.recommendation);
+
+// ---- Classes that draw the same thing ------------------------------------------
+
+// Token name -> its value, written the same way whatever the spelling.
+export function loadTokenValues(runDir) {
+  const values = new Map();
+  for (const token of readJson(path.join(runDir, "facts", "tokens.json"), { tokens: [] }).tokens ?? []) {
+    const value = token.declarations?.[0]?.value;
+    if (typeof value === "string") values.set(token.name, value.trim().toLowerCase().replace(/\s+/g, ""));
+  }
+  return values;
+}
+
+// `bg-[#dbeafe]` and `bg-brand-soft` (when --color-brand-soft is #dbeafe) both become
+// `bg=#dbeafe`; `text-[11px]` and `text-tiny` both become `text=11px`.
+const TOKEN_SPACES = { text: ["color", "text", "font-size"], rounded: ["radius"], shadow: ["shadow"], font: ["font", "font-weight"] };
+export function sameLook(utility, tokenValues = new Map()) {
+  const arbitrary = /^(.+?)-\[(.+)\]$/.exec(utility);
+  if (arbitrary) return `${arbitrary[1]}=${arbitrary[2].toLowerCase().replace(/[\s_]+/g, "")}`;
+  const dash = utility.indexOf("-");
+  if (dash < 1) return utility;
+  const prefix = utility.slice(0, dash);
+  const rest = utility.slice(dash + 1);
+  for (const space of TOKEN_SPACES[prefix] ?? ["color", "spacing"]) {
+    const value = tokenValues.get(`--${space}-${rest}`);
+    if (value) return `${prefix}=${value}`;
+  }
+  return utility;
+}
