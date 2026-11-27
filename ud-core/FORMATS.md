@@ -12,7 +12,7 @@ The contract between the scripts and the skills. Words in **bold** are defined i
 │   ├── lots.json            Lots (written by ud-plan)
 │   └── plan.md
 └── runs/<run id>/           One Run, id = YYYY-MM-DD-HHmmss
-    ├── run.json             { id, scannerVersion, startedAt, commit, branch, dirty, counts }
+    ├── run.json             { id, scannerVersion, startedAt, commit, branch, dirty, dirtyFiles[], dirtyHashes{}, counts }
     ├── graph.json           { run, counts, nodes[], edges[] }
     ├── facts/               Raw facts from ud-scan (never edited by hand)
     │   ├── classes.json     { byFile: { file: { classToken: count } }, arbitrary: [{ file, line, token }] }
@@ -23,6 +23,7 @@ The contract between the scripts and the skills. Words in **bold** are defined i
     ├── findings/<skill>.json   { generatedBy, generatedAt, summary, findings[] }
     ├── work/                Briefs and intermediate data for judging agents
     ├── reports/<skill>.md   Reports for the owner, in the settings' report language
+    ├── reports/brief.md     The one page to read first (brief.mjs); brief-<focus>.md for one part
     └── map.html             The interactive map (self-contained, works offline)
 ```
 
@@ -49,6 +50,10 @@ The contract between the scripts and the skills. Words in **bold** are defined i
 ```
 
 `screens.kind` is `next-app` (with `dir`), `globs` (with `include`) or `none`. The last four keys are optional and override `ud-core/defaults.json` key by key. The first **Zone** whose `include` matches a file wins; a file matching none is `unzoned`.
+
+## run.json
+
+`dirtyFiles` lists the files that were uncommitted when the scan ran (untracked ones included), and `dirtyHashes` a short hash of each. With them, `diff-runs.mjs`, `carry.mjs` and `status.mjs` can tell what changed between two runs, or since the last one, even when nothing was committed in between: the usual case while an interface is being worked on.
 
 ## graph.json
 
@@ -95,6 +100,7 @@ Made with `finding()` from `lib.mjs`. The `id` is stable across **Runs** (kind +
 
 - `reach` is the **Reach**; `effort` is the **Effort** (`XS`, `S`, `M`, `L`).
 - Scripts fill what can be counted. A judging agent may then set `effort`, `confidence`, `recommendation`, `judgement` and `source: "agent"`, and nothing else.
+- `carriedFrom` (a run id) is set by `carry.mjs` when those fields were copied from an earlier **Run** because none of the **Finding**'s files changed. The counts are always the new run's.
 - Every finding that offers a choice has at least two `options`, and one of them is always `keep` ("leave as it is"). A finding with no `options` is information only.
 
 ### Finding kinds
@@ -127,7 +133,9 @@ Made with `finding()` from `lib.mjs`. The `id` is stable across **Runs** (kind +
 }
 ```
 
-`status` is `open`, `settled` or `applied`. A finding with no entry is open. A `keep` choice is settled and never asked again unless its subject changes.
+`status` is `open`, `deferred`, `settled` or `applied`. A finding with no entry is open. A `keep` choice is settled and never asked again unless its subject changes.
+
+A `deferred` entry has no `choice`; its `note` says who or what is awaited ("Marie, design: is the pink tone still wanted?"). It is not asked again in the ordinary rounds, never goes into a **Lot**, and is listed in `reports/decisions.md` under "Waiting on someone" so the list can be sent as it is.
 
 ## plan/lots.json
 

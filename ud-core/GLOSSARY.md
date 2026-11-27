@@ -69,12 +69,16 @@ A **Finding** where two sources disagree, such as the app and Storybook. No sour
 _Avoid_: Drift, mismatch, gap
 
 **Decision**:
-The owner's answer to a **Finding** that offers a choice. It is open, settled or applied.
+The owner's answer to a **Finding** that offers a choice. It is open, deferred (waiting on someone else's answer), settled or applied.
 _Avoid_: Arbitration, verdict, resolution
 
 **Decision ledger**:
 The lasting record of every **Decision** in a project, so that a later **Run** does not ask again.
 _Avoid_: Decision log, register, history
+
+**Brief**:
+The one page that ranks what every audit of a **Run** found, for the owner to read first. It can be limited to one **Zone**, **Family**, component or folder.
+_Avoid_: Summary, dashboard, digest
 
 **Lot**:
 A set of settled **Decisions** that can be reworked, checked and understood on its own.

@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   UD_DIR, projectRoot, loadSettings, loadTypeScript, git, walk, matchesAny, zoneOf, isReadOnly,
-  writeJson, runsDir, splitClass, tokenizeClasses,
+  writeJson, runsDir, splitClass, tokenizeClasses, dirtyState,
 } from "./lib.mjs";
 
 const SCANNER_VERSION = 1;
@@ -858,10 +858,13 @@ const counts = {
   stories: nodes.filter((node) => node.kind === "story").reduce((sum, node) => sum + node.data.stories.length, 0),
   tokens: tokenFacts.length, edges: edges.length,
 };
+// The uncommitted files are listed, with a hash each, so that a later run can tell what changed
+// even when the work was never committed between the two.
+const dirtyNow = dirtyState(root);
 writeJson(path.join(runDir, "run.json"), {
   id: runId, scannerVersion: SCANNER_VERSION, startedAt: now.toISOString(),
   commit: git(["rev-parse", "HEAD"], root), branch: git(["rev-parse", "--abbrev-ref", "HEAD"], root),
-  dirty: Boolean(git(["status", "--porcelain", "--untracked-files=no"], root)),
+  ...dirtyNow,
   counts,
 });
 writeJson(path.join(runDir, "graph.json"), { run: runId, counts, nodes, edges });

@@ -174,9 +174,9 @@ button.barrow:hover{background:var(--soft)}
 .bar{height:10px;background:var(--soft);border-radius:5px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--muted);border-radius:5px}
 .chip{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:.78rem;line-height:1.6;white-space:nowrap;color:var(--muted)}
-.chip.k-component,.chip.k-screen,.chip.k-story,.chip.k-token,.chip.k-module,.chip.s-open,.chip.s-settled,.chip.s-applied{color:var(--c);border-color:var(--c)}
+.chip.k-component,.chip.k-screen,.chip.k-story,.chip.k-token,.chip.k-module,.chip.s-open,.chip.s-deferred,.chip.s-settled,.chip.s-applied{color:var(--c);border-color:var(--c)}
 .k-component{--c:var(--component)}.k-screen{--c:var(--screen)}.k-story{--c:var(--story)}.k-token{--c:var(--token)}.k-module{--c:var(--module)}.k-finding{--c:var(--finding)}.k-more{--c:var(--line)}
-.s-open{--c:var(--open)}.s-settled{--c:var(--settled)}.s-applied{--c:var(--applied)}.s-info{--c:var(--info)}
+.s-open{--c:var(--open)}.s-deferred{--c:var(--info)}.s-settled{--c:var(--settled)}.s-applied{--c:var(--applied)}.s-info{--c:var(--info)}
 .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 .filters label{display:grid;gap:2px;font-size:.78rem;color:var(--muted);flex:1 1 120px;min-width:0}
 .filters label.wide{flex:1 1 100%}
@@ -244,7 +244,7 @@ function client() {
   const SVGNS = "http://www.w3.org/2000/svg";
   const KINDS = ["component", "screen", "story", "token", "module"];
   const KIND_LABEL = { component: "Component", screen: "Screen", story: "Story file", token: "Token", module: "Module" };
-  const STATUS_LABEL = { open: "Open", settled: "Settled", applied: "Applied", info: "Information only" };
+  const STATUS_LABEL = { open: "Open", deferred: "Waiting on someone", settled: "Settled", applied: "Applied", info: "Information only" };
   const EFFORTS = ["XS", "S", "M", "L"];
   const CAP = 200;
 
@@ -318,6 +318,7 @@ function client() {
   const statusOf = (finding) => {
     const entry = D.decisions[finding.id];
     if (entry && (entry.status === "settled" || entry.status === "applied")) return entry.status;
+    if (entry && entry.status === "deferred" && finding.options.length >= 2) return "deferred";
     return finding.options.length >= 2 ? "open" : "info";
   };
   const findingById = new Map();
@@ -725,7 +726,7 @@ function client() {
   function buildFindings(panel) {
     panel.appendChild(h("div", { class: "filters" },
       control("fq", "Search Findings"), control("fkind", "Kind", anyOf("All kinds", findingKinds)), control("fzone", "Zone", anyOf("All Zones", zones)),
-      control("fstatus", "Decision", [["", "Any status"], ["open", "Open"], ["settled", "Settled"], ["applied", "Applied"], ["info", "Information only"]])));
+      control("fstatus", "Decision", [["", "Any status"], ["open", "Open"], ["deferred", "Waiting on someone"], ["settled", "Settled"], ["applied", "Applied"], ["info", "Information only"]])));
     panel.appendChild(h("p", { class: "count", id: "fi-count", role: "status" }));
     panel.appendChild(h("div", { class: "panel tablewrap" }, h("table", null, h("thead", null, h("tr", { id: "fi-head" })), h("tbody", { id: "fi-body" }))));
     panel.appendChild(h("div", { id: "fi-more" }));
@@ -734,7 +735,7 @@ function client() {
     if (key === "screens" || key === "uses") return finding.reach[key];
     if (key === "effort") return EFFORTS.indexOf(finding.effort);
     if (key === "confidence") return finding.confidence === null ? -1 : finding.confidence;
-    if (key === "status") return ["open", "settled", "applied", "info"].indexOf(finding.status);
+    if (key === "status") return ["open", "deferred", "settled", "applied", "info"].indexOf(finding.status);
     return String(finding[key]).toLowerCase();
   }
   function renderFindings() {

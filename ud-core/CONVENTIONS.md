@@ -42,6 +42,12 @@ Then merge the answers into the findings file: set those four fields and `source
 
 Before sending more than 5 sub-agents, tell the owner how many, what each group covers and roughly how long, and wait for a yes. A skill run alone on a narrowed target (one **Family**, one **Zone**) needs no question when it stays at 5 or fewer. Rank by **Reach** and judge the top of the list first; say what was left unjudged.
 
+The number comes from a script, like every other number: `brief.mjs` prints the judging plan (`judging.ranked`: one line per group an agent would read, highest **Reach** first). Ask after the counts exist, never before: scripts are free and need no permission, agents are not.
+
+A new **Run** starts with script-only **Findings**. Before judging anything on it, run `carry.mjs`: it brings forward the answers agents gave on the earlier **Run** for every **Finding** whose files did not change. Never copy those fields by hand, and never pay twice for the same reading.
+
 ## Reporting back
 
 End each skill with: what was written and where (paths under `.ud/`), the three to five facts that matter most, what was not checked, and the next skill that makes sense. Keep it short; the report file holds the detail.
+
+Write for a person who designs and builds interfaces. A fact names the thing on screen and what the number means for it ("Button is on 31 screens and no story shows its loading state"), not the kind of **Finding** and a count ("14 story-value-missing"). Kinds and ids are for the files and for the commands.

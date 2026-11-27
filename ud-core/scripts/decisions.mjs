@@ -2,10 +2,11 @@
 // ud decisions: the Decision ledger CLI (.ud/decisions.json).
 // It only records what it is given; it never invents a decision.
 //
-//   decisions.mjs open [--kind k] [--zone z] [--limit n]
+//   decisions.mjs open [--kind k] [--zone z] [--focus text] [--limit n] [--deferred]
 //   decisions.mjs set <findingId> <optionKey> [--note "text"]
 //   decisions.mjs set-many <file.json>          [{ findingId, choice, note }]
 //   decisions.mjs applied <findingId> [--lot id]
+//   decisions.mjs defer <findingId> --note "who or what is awaited"
 //   decisions.mjs reopen <findingId>
 //   decisions.mjs status
 // Every sub-command accepts --run <id> (default: the latest run).
@@ -13,12 +14,12 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   UD_DIR, projectRoot, loadSettings, resolveRun, readJson, writeJson, writeText,
-  loadFindings, mdTable, countBy, argValue,
+  loadFindings, mdTable, countBy, argValue, familyIndex, inFocus,
 } from "./lib.mjs";
 
 const root = projectRoot();
 const argv = process.argv.slice(2);
-const VALUE_FLAGS = new Set(["--run", "--kind", "--zone", "--limit", "--note", "--lot"]);
+const VALUE_FLAGS = new Set(["--run", "--kind", "--zone", "--focus", "--limit", "--note", "--lot"]);
 const LEDGER_FILE = path.join(root, UD_DIR, "decisions.json");
 const LOTS_FILE = path.join(root, UD_DIR, "plan", "lots.json");
 
@@ -93,7 +94,7 @@ function buildEntry(request, context, previous) {
       subject: finding.subject ?? [],
       status: "settled",
       choice,
-      note: note ?? previous?.note ?? null,
+      note: note ?? (previous?.status === "deferred" ? null : previous?.note) ?? null,
       decidedAt: today(),
       run: context.run.id,
       lot: null,
@@ -113,11 +114,25 @@ function commandOpen() {
   const limit = limitText === undefined ? Infinity : Number(limitText);
   if (!(limit > 0)) stop(`--limit needs a number above 0, got "${limitText}".`);
 
-  const open = context.findings
+  // A deferred Decision waits on someone: it is not asked again until it is reopened
+  // or settled, and --deferred lists those instead of the open ones.
+  const focus = argValue("--focus", argv);
+  if (argv.includes("--focus") && !focus) stop("--focus needs a Zone, a Family, a component name or part of a path.");
+  const wantDeferred = argv.includes("--deferred");
+  const isDeferred = (finding) => ledger.decisions[finding.id]?.status === "deferred";
+  let scope = null;
+  if (focus) {
+    const graph = readJson(path.join(context.run.dir, "graph.json"));
+    scope = { nodesById: new Map(graph.nodes.map((node) => [node.id, node])), families: familyIndex(context.run.dir, graph, loadSettings(root)) };
+  }
+  const candidates = context.findings
     .filter(offersChoice)
     .filter((finding) => !isClosed(ledger.decisions[finding.id]))
     .filter((finding) => (kind ? finding.kind === kind : true))
-    .filter((finding) => (zone ? finding.zone === zone : true));
+    .filter((finding) => (zone ? finding.zone === zone : true))
+    .filter((finding) => (scope ? inFocus(finding, focus, scope) : true));
+  const deferredCount = candidates.filter(isDeferred).length;
+  const open = candidates.filter((finding) => isDeferred(finding) === wantDeferred);
   const groups = countBy(open, (finding) => finding.kind)
     .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
     .map(([groupKind, count]) => ({
@@ -139,9 +154,12 @@ function commandOpen() {
           recommendation: finding.recommendation,
           judgement: finding.judgement,
           evidence: (finding.evidence ?? []).slice(0, 3),
+          ...(wantDeferred ? { waitingOn: ledger.decisions[finding.id]?.note ?? null, deferredAt: ledger.decisions[finding.id]?.decidedAt ?? null } : {}),
         })),
     }));
-  print({ run: context.run.id, open: open.length, groups });
+  print(wantDeferred
+    ? { run: context.run.id, deferred: open.length, groups }
+    : { run: context.run.id, open: open.length, deferred: deferredCount, groups });
 }
 
 function commandSet(requests, single) {
@@ -191,6 +209,35 @@ function commandApplied(findingId) {
   print({ findingId, status: entry.status, choice: entry.choice, lot: entry.lot ?? null, appliedAt: entry.appliedAt });
 }
 
+// Deferred: the owner cannot answer yet (a designer, a product owner or a measurement
+// is awaited). The note says who or what; the Finding is not asked again meanwhile.
+function commandDefer(findingId) {
+  const note = argValue("--note", argv);
+  if (!findingId || !note) stop('usage: decisions.mjs defer <findingId> --note "who or what is awaited"');
+  const context = runFindings();
+  const ledger = loadLedger();
+  const finding = context.byId.get(findingId);
+  const previous = ledger.decisions[findingId];
+  if (!finding && !previous) stop(`${findingId}: no such Finding in run ${context.run.id}.`);
+  if (finding && !offersChoice(finding)) stop(`${findingId}: this Finding is information only, it offers no choice.`);
+  if (previous?.status === "applied") stop(`${findingId}: this Decision is applied. Reopen it first if it must be asked again.`);
+  ledger.decisions[findingId] = {
+    findingId,
+    kind: finding?.kind ?? previous.kind,
+    title: finding?.title ?? previous.title,
+    subject: finding?.subject ?? previous.subject ?? [],
+    status: "deferred",
+    choice: null,
+    note,
+    decidedAt: today(),
+    run: context.run.id,
+    lot: null,
+    appliedAt: null,
+  };
+  saveLedger(ledger);
+  print({ findingId, status: "deferred", waitingOn: note });
+}
+
 function commandReopen(findingId) {
   if (!findingId) stop("usage: decisions.mjs reopen <findingId>");
   const ledger = loadLedger();
@@ -209,17 +256,20 @@ function commandStatus() {
   const ledger = loadLedger();
   loadSettings(root);
   const entries = Object.values(ledger.decisions);
-  const open = context.findings.filter(offersChoice).filter((finding) => !isClosed(ledger.decisions[finding.id]));
+  const deferred = entries.filter((entry) => entry.status === "deferred");
+  const deferredIds = new Set(deferred.map((entry) => entry.findingId));
+  const open = context.findings.filter(offersChoice).filter((finding) => !isClosed(ledger.decisions[finding.id]) && !deferredIds.has(finding.id));
   const settled = entries.filter((entry) => entry.status === "settled");
   const applied = entries.filter((entry) => entry.status === "applied");
   const notInRun = entries.filter((entry) => isClosed(entry) && !context.byId.has(entry.findingId));
 
   const kinds = new Map();
   const bump = (kind, status) => {
-    if (!kinds.has(kind)) kinds.set(kind, { kind, open: 0, settled: 0, applied: 0 });
+    if (!kinds.has(kind)) kinds.set(kind, { kind, open: 0, deferred: 0, settled: 0, applied: 0 });
     kinds.get(kind)[status] += 1;
   };
   for (const finding of open) bump(finding.kind, "open");
+  for (const entry of deferred) bump(entry.kind, "deferred");
   for (const entry of settled) bump(entry.kind, "settled");
   for (const entry of applied) bump(entry.kind, "applied");
   const byKind = [...kinds.values()].sort((a, b) => a.kind.localeCompare(b.kind));
@@ -232,6 +282,7 @@ function commandStatus() {
     `Run ${context.run.id}. The Decision ledger is \`${UD_DIR}/decisions.json\`; it lasts across Runs.`,
     "",
     `- Open: **${open.length}**`,
+    `- Waiting on someone: **${deferred.length}**`,
     `- Settled, not applied yet: **${settled.length}** (${settled.filter((entry) => entry.choice === "keep").length} of them "keep", nothing to rework)`,
     `- Applied: **${applied.length}**`,
     "",
@@ -242,6 +293,12 @@ function commandStatus() {
         .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
         .map(([kind, count]) => [kind, count, Math.max(...open.filter((finding) => finding.kind === kind).map((finding) => finding.reach?.screens ?? 0))]))
       : "No open Decision in this run.",
+    "",
+    "## Waiting on someone",
+    "",
+    deferred.length
+      ? `These cannot be answered by the owner alone. Each note says who or what is awaited; the list can be sent as it is.\n\n${mdTable(["Question", "Kind", "Waiting on", "Since", "Id"], sortEntries(deferred).map((entry) => [`${entry.title}${flag(entry)}`, entry.kind, entry.note ?? "", entry.decidedAt, entry.findingId]))}`
+      : "Nothing is waiting on anyone.",
     "",
     "## Settled",
     "",
@@ -263,7 +320,7 @@ function commandStatus() {
   writeText(report, lines.join("\n"));
   print({
     run: context.run.id,
-    counts: { open: open.length, settled: settled.length, applied: applied.length },
+    counts: { open: open.length, deferred: deferred.length, settled: settled.length, applied: applied.length },
     byKind,
     notInRun: notInRun.map((entry) => entry.findingId).sort(),
     report: path.relative(root, report),
@@ -298,6 +355,9 @@ switch (command) {
   case "applied":
     commandApplied(rest[0]);
     break;
+  case "defer":
+    commandDefer(rest[0]);
+    break;
   case "reopen":
     commandReopen(rest[0]);
     break;
@@ -305,5 +365,5 @@ switch (command) {
     commandStatus();
     break;
   default:
-    stop(`${command ? `unknown sub-command "${command}". ` : ""}Use one of: open, set, set-many, applied, reopen, status.`);
+    stop(`${command ? `unknown sub-command "${command}". ` : ""}Use one of: open, set, set-many, defer, applied, reopen, status.`);
 }

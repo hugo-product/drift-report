@@ -6,7 +6,7 @@ Puts open findings to the owner in groups of the same subject, with options and 
 |---|---|
 | **Reads** | All findings of the run, `.ud/decisions.json` |
 | **Writes** | `.ud/decisions.json`, `reports/decisions.md` |
-| **Run** | `/ud-decide [kind, skill, family or zone]` |
+| **Run** | `/ud-decide [kind, skill, family, component, zone \| deferred]` |
 | **Sub-agents** | None |
 | **Changes project code** | No |
 
